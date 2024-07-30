@@ -61,4 +61,30 @@ userSchema.methods.isPasswordCorrect = async function(password){
     return await bcrypt.compare(password, this.password)
 }
 
+userSchema.methods.genrateAccessToken = function (){
+    return jwt.sign(
+        {
+            _id: this.id,
+            username: this.username,
+            email: this.email,
+            fullname: this.fullname, 
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+            expiryIn:  process.env.ACCESS_TOKEN_EXPIRY,
+        }
+    )
+}
+userSchema.methods.genrateRefreshToken = function (){
+    return jwt.sign(
+        {
+            _id: this.id,
+        },
+        process.env.REFRESH_TOKEN_SECRET,
+        {
+            expiryIn: process.env.REFRESH_TOKEN_EXPIRY
+        }
+    )
+}
+
 export const User = model("User", userSchema)
