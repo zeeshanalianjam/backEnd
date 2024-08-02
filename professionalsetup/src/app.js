@@ -15,4 +15,12 @@ app.use(express.urlencoded({extended: true, limit: "10kb"})) //using for url dat
 app.use(express.static("public")) //using for file upload or pdf , image etc 
 app.use(cookieParser()) //using for hot get or set access with user browser to the help of server 
 
+// routes import
+import userRouter from './routes/user.routes.js'
+
+// routes declaration
+app.use("/api/v1/users" , userRouter)
+
+// http://localhost:8000/api/v1/users/register
+
 export { app }
