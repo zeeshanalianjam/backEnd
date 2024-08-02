@@ -4,6 +4,7 @@
 // const app = express()
 import dotenv from 'dotenv'
 import DBConnect from './db/index.js'
+import { app } from './app.js'
 
 dotenv.config({
     path: './.env'
