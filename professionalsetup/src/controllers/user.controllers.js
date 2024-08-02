@@ -1,4 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/apiError.js";
+
 
 const registerUser = asyncHandler( async (req, res) => {
     // first request check in postman with status code and ok message
@@ -12,6 +14,13 @@ const registerUser = asyncHandler( async (req, res) => {
     const {username, email, fullname, password} =  req.body
     console.log('Email: ', email);
     console.log('Password: ', password);
+
+    // validation setting
+    if ([username, email, fullname, password].some((fields) => 
+        fields?.trim() === ""
+)) {
+        throw new ApiError(400, "All fields are required ")
+    }
     
 
 
