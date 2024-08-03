@@ -9,14 +9,19 @@ const registerUser = asyncHandler(async (req, res) => {
     //     message: "ok",
     // })
 
+    // user register step
+    // get user details from frontend
+    // validation - not empty in field by user
+    // check user if already exists or not: username , email
+    // check for images, check for avatar
+    // upload them to cloudinary, avatar
+    // create user object - create entry in db
 
 
     // get details from user 
     const { username, email, fullname, password } = req.body
-    console.log('Email: ', email);
-    console.log('Password: ', password);
 
-    // validation setting
+    // validation
     if ([username, email, fullname, password].some((fields) =>
         fields?.trim() === ""
     )) {
@@ -33,6 +38,16 @@ const registerUser = asyncHandler(async (req, res) => {
         
     }
 
+
+    // set images path and check avatar is available or not
+   const avatarLocalPath = req.files?.avatar[0]?.path;
+   const coverimageLocalPath = req.files?.coverimage[0]?.path;
+
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is required")
+    }
+    
+   
 
 
 
