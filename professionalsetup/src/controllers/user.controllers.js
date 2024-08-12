@@ -4,6 +4,22 @@ import { User } from '../models/user.models.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+// genrate access and refresh tokens with seprate async func
+const genrateAccessAndRefreshTokens = async (userId) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.genrateAccessToken()
+        const refreshToken = user.genrateRefreshToken()
+
+        user.refreshtoken = refreshToken
+        await user.save({ validateBeforeSave: false })
+
+        return { accessToken, refreshToken }
+
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while genrating access and refresh tokens")
+    }
+}
 
 const registerUser = asyncHandler(async (req, res) => {
     // first request check in postman with status code and ok message
@@ -23,7 +39,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // return res
 
 
-    
+
     // get details from user 
     const { username, email, fullname, password } = req.body
 
@@ -48,7 +64,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // set images path and check avatar is available or not
     const avatarLocalPath = req.files?.avatar[0]?.path;
     // const coverimageLocalPath = req.files?.coverimage[0]?.path;
-    
+
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is required")
     }
@@ -68,7 +84,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
 
     // create user object - create entry in db
-    const user =  await User.create({
+    const user = await User.create({
         username: username.toLowerCase(),
         email,
         password,
@@ -94,8 +110,75 @@ const registerUser = asyncHandler(async (req, res) => {
     return res.status(201).json(
         new ApiResponse(200, createdUser, "User registered Successfully...")
     )
-        
+
 
 })
 
-export default registerUser;
+
+// Login user code
+const loginUser = asyncHandler(async (req, res) => {
+    // req.body get karna ha data
+    // username or email require validation lagani ha
+    // find the user
+    // password require to login
+    // access and refresh token
+    // send cookies
+
+
+    // req.body get karna ha data
+    const { username, email, password } = req.body
+    console.log("Username : ", username);
+
+
+    // username or email require validation lagani ha
+    if (!username || !email) {
+        throw new ApiError(400, "username or email is required")
+    }
+
+    // find the user
+    const user = await User.findOne({
+        $or: [{ username }, { email }]
+    })
+
+    // check user is available or not
+    if (!user) {
+        throw new ApiError(400, "user doesn't exist")
+    }
+
+
+    // password require to login
+    const isPasswordValid = await user.isPasswordCorrect(password)
+
+    if (!isPasswordValid) {
+        throw new ApiError(400, "Invalid user credentials")
+    }
+
+
+    // access and refresh token
+    const { accessToken, refreshToken } = await genrateAccessAndRefreshTokens(user._id)
+
+    // logedInUser
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+
+    // send cookies
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+
+    // successfully res
+    return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(
+        new ApiResponse(200, {
+            user: loggedInUser,
+            accessToken,
+            refreshToken,
+        },
+            "User logged in successfully...")
+    )
+
+
+})
+
+export { registerUser, loginUser };
