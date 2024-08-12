@@ -7,7 +7,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 
 const registerUser = asyncHandler(async (req, res) => {
     // first request check in postman with status code and ok message
-    //  res.status(200).json({
+    //  res.status(200).json({ 
     //     message: "ok",
     // })
 
@@ -23,6 +23,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // return res
 
 
+    
     // get details from user 
     const { username, email, fullname, password } = req.body
 
@@ -34,7 +35,7 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // check user already exist or not
-    const userExist = User.findOne({
+    const userExist = await User.findOne({
         $or: [{ username, email }]
     })
 
@@ -87,6 +88,7 @@ const registerUser = asyncHandler(async (req, res) => {
     return res.status(201).json(
         new ApiResponse(200, createdUser, "User registered Successfully...")
     )
+        
 
 })
 
