@@ -379,4 +379,48 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
        .json(new ApiResponse(200, user, 'avatar has been uploaded'))
 })
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken,changeCurrentPassword,getCurrentUser,updateAccountDetails }
+// update user cover image
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+
+    // taking the new path of coverimage
+   const coverimageLocalPath = req.file?.path
+
+    // check the existence of coverimage
+   if(!coverimageLocalPath){
+    throw new ApiError(400, "Cover iamge file not found")
+   }
+
+//    upload coverimage to the cloudinary
+ const coverimage = await uploadOnCloudinary(coverimageLocalPath)
+
+//  check the if url is founded or not
+ if (coverimage.url) {
+    throw new ApiError(400, "Cover iamge url not found")
+ }
+
+//  if find and update the user schema
+ const user = User.findByIdAndUpdate(req.user?._id,
+    {
+        $set: {
+            coverimage: coverimage.url
+        }
+    },
+    {
+        new: true
+    }
+ )
+
+//  validate the user exist or not form the user schema  
+ if(!user){
+    throw new ApiError(404, "User not exist")
+ }
+
+//  final response send to user 
+ return res.status(200).json(
+    new ApiResponse(200, user, "Cover image file has been successfully uploaded...")
+ )
+
+
+})
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken,changeCurrentPassword,getCurrentUser,updateAccountDetails, updateUserAvatar, updateUserCoverImage }
