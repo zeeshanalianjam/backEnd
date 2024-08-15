@@ -343,4 +343,40 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
 })
 
+// update user avatar
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    //get the image from the request
+    const avatarLocalPath = req.file?.path
+
+    if (!avatarLocalPath) {
+        throw new ApiError(400, 'avatar is missing')
+    }
+
+    //upload image to cloudinary
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if (!avatar.url) {
+        throw new ApiError(401, 'avatar url is not founded')
+    }
+
+
+    //find the user
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url
+            },
+            
+        },
+    
+        { new: true }
+    
+    )
+
+    return res
+       .status(200)
+       .json(new ApiResponse(200, avatar, 'avatar has been uploaded'))
+})
+
 export { registerUser, loginUser, logoutUser, refreshAccessToken,changeCurrentPassword,getCurrentUser,updateAccountDetails }
