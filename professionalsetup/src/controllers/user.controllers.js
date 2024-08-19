@@ -311,7 +311,6 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         .json(200, req.user, 'current user fetched successfully')
 })
 
-
 // updateAccountDetails / upade user details
 const updateAccountDetails = asyncHandler(async (req, res) => {
     const { email, fullname } = req.body
@@ -329,18 +328,17 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         {
             $set: {
                 email,
-                fullname
+                fullname,
             },
         },
 
         { new: true }
     )
 
-//reponse to the user with new apiResponse utils
+    //reponse to the user with new apiResponse utils
     return res
-       .status(200)
-       .json(new ApiResponse(200, user, 'account details has been updated'))
-
+        .status(200)
+        .json(new ApiResponse(200, user, 'account details has been updated'))
 })
 
 // update user avatar
@@ -359,111 +357,163 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(401, 'avatar url is not founded')
     }
 
-
     //find the user
     const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
-                avatar: avatar.url
+                avatar: avatar.url,
             },
-            
         },
-    
+
         { new: true }
-    
     )
 
     return res
-       .status(200)
-       .json(new ApiResponse(200, user, 'avatar has been uploaded'))
+        .status(200)
+        .json(new ApiResponse(200, user, 'avatar has been uploaded'))
 })
 
 // update user cover image
 const updateUserCoverImage = asyncHandler(async (req, res) => {
-
     // taking the new path of coverimage
-   const coverimageLocalPath = req.file?.path
+    const coverimageLocalPath = req.file?.path
 
     // check the existence of coverimage
-   if(!coverimageLocalPath){
-    throw new ApiError(400, "Cover iamge file not found")
-   }
-
-//    upload coverimage to the cloudinary
- const coverimage = await uploadOnCloudinary(coverimageLocalPath)
-
-//  check the if url is founded or not
- if (coverimage.url) {
-    throw new ApiError(400, "Cover iamge url not found")
- }
-
-//  if find and update the user schema
- const user = User.findByIdAndUpdate(req.user?._id,
-    {
-        $set: {
-            coverimage: coverimage.url
-        }
-    },
-    {
-        new: true
+    if (!coverimageLocalPath) {
+        throw new ApiError(400, 'Cover iamge file not found')
     }
- )
 
-//  validate the user exist or not form the user schema  
- if(!user){
-    throw new ApiError(404, "User not exist")
- }
+    //    upload coverimage to the cloudinary
+    const coverimage = await uploadOnCloudinary(coverimageLocalPath)
 
-//  final response send to user 
- return res.status(200).json(
-    new ApiResponse(200, user, "Cover image file has been successfully uploaded...")
- )
+    //  check the if url is founded or not
+    if (coverimage.url) {
+        throw new ApiError(400, 'Cover iamge url not found')
+    }
 
+    //  if find and update the user schema
+    const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverimage: coverimage.url,
+            },
+        },
+        {
+            new: true,
+        }
+    )
 
+    //  validate the user exist or not form the user schema
+    if (!user) {
+        throw new ApiError(404, 'User not exist')
+    }
+
+    //  final response send to user
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                user,
+                'Cover image file has been successfully uploaded...'
+            )
+        )
 })
 
-// get user channel 
-const getUserChannel = asyncHandler( async(req, res)=> {
- const  {username} = req.params
+// get user channel
+const getUserChannel = asyncHandler(async (req, res) => {
+    // getting the user details from req.params means URL
+    const { username } = req.params
 
- if(!username?.trim()){
-    throw new ApiError(400, "username is missing!")
- }
+    //  validation on username
+    if (!username?.trim()) {
+        throw new ApiError(400, 'username is missing!')
+    }
 
- User.aggregate([
-    {
-        $match : {
-            username : username?.toLowerCase()
-        }
-    },{
-        $lookup : {
-            from: "subscriptions",
-            localField: "_id",
-            foreignField: "channel",
-            as: "Subscriber"
-        }
-    },
-    {
-        $lookup : {
-            from: "subscriptions",
-            localField: "_id",
-            foreignField: "subscriber",
-            as: "SubscribedTo"
-        }
-    },
-    {
-        $addFields : {
-            subscribersCount : {
-                $size: "$Subscriber"
+    //  creating the channel with help of aggregation piplines
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase(),
             },
-            channelSubscribedToCount : {
-                $size: "$SubscribedTo"
+        },
+        {
+            $lookup: {
+                from: 'subscriptions',
+                localField: '_id',
+                foreignField: 'channel',
+                as: 'Subscriber',
             },
-        }
-    },
- ])
+        },
+        {
+            $lookup: {
+                from: 'subscriptions',
+                localField: '_id',
+                foreignField: 'subscriber',
+                as: 'SubscribedTo',
+            },
+        },
+        {
+            $addFields: {
+                subscribersCount: {
+                    $size: '$subscribers',
+                },
+                channelSubscribedToCount: {
+                    $size: '$subscribedTo',
+                },
+                isSubscibed: {
+                    $cond: {
+                        if: {
+                            $in: [req.user?._id, '$subscribers.subscriber'],
+                            then: true,
+                            else: false,
+                        },
+                    },
+                },
+            },
+        },
+        {
+            $project: {
+                username: 1,
+                fullname: 1,
+                avatar: 1,
+                coverimage: 1,
+                email: 1,
+                subscribersCount: 1,
+                channelSubscribedToCount: 1,
+                isSubscibed: 1,
+            },
+        },
+    ])
 
+    //  validation for the user channel
+    if (!channel?.length) {
+        throw new ApiError(401, 'User channel does not exist')
+    }
+
+    //  final resposne
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                201,
+                channel[0],
+                'User channel fetched successfully...'
+            )
+        )
 })
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken,changeCurrentPassword,getCurrentUser,updateAccountDetails, updateUserAvatar, updateUserCoverImage }
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage,
+    getUserChannel,
+}
