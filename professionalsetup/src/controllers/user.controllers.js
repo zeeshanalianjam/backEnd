@@ -4,6 +4,7 @@ import { User } from '../models/user.models.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import { ApiResponse } from '../utils/ApiResponse.js'
 import jwt from 'jsonwebtoken'
+import mongoose from 'mongoose'
 
 // genrate access and refresh tokens with seprate async func
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -263,9 +264,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             .cookie('accessToken', accessToken, options)
             .cookie('refreshToken', newRefreshToken, options)
             .json(
-                200,
-                { accessToken, refreshToken: newRefreshToken },
-                'Acess Token has been refreshed'
+                new ApiResponse(
+                    200, 
+                    { accessToken, refreshToken: newRefreshToken },
+                    'Acess Token has been refreshed')
             )
     } catch (error) {
         throw new ApiError(401, error?.message || 'Invalid refresh token')
@@ -308,7 +310,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
     return res
         .status(200)
-        .json(200, req.user, 'current user fetched successfully')
+        .json(new ApiResponse(200, req.user, "User fatched successfully..."))
 })
 
 // updateAccountDetails / upade user details
@@ -318,7 +320,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     //validation
 
     if (!email || !fullname) {
-        throw new ApiError(400, 'email and username are required')
+        throw new ApiError(400, 'email and fullname are required')
     }
 
     //find the user
@@ -388,12 +390,12 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     const coverimage = await uploadOnCloudinary(coverimageLocalPath)
 
     //  check the if url is founded or not
-    if (coverimage.url) {
+    if (!coverimage.url) {
         throw new ApiError(400, 'Cover iamge url not found')
     }
 
     //  if find and update the user schema
-    const user = User.findByIdAndUpdate(
+    const user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
@@ -411,15 +413,9 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     }
 
     //  final response send to user
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                user,
-                'Cover image file has been successfully uploaded...'
-            )
-        )
+    return res.status(200).json(new ApiResponse(200, user, 'coverImage has been uploaded'))
+
+
 })
 
 // get user channel
@@ -461,9 +457,9 @@ const getUserChannel = asyncHandler(async (req, res) => {
                     $size: '$subscribers',
                 },
                 channelSubscribedToCount: {
-                    $size: '$subscribedTo',
+                    $size: '$SubscribedTo',
                 },
-                isSubscibed: {
+                isSubscribed: {
                     $cond: {
                         if: {
                             $in: [req.user?._id, '$subscribers.subscriber'],
@@ -483,7 +479,7 @@ const getUserChannel = asyncHandler(async (req, res) => {
                 email: 1,
                 subscribersCount: 1,
                 channelSubscribedToCount: 1,
-                isSubscibed: 1,
+                isSubscribed: 1,
             },
         },
     ])
