@@ -420,6 +420,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
 // get user channel
 const getUserChannel = asyncHandler(async (req, res) => {
+
     // getting the user details from req.params means URL
     const { username } = req.params
 
@@ -440,7 +441,7 @@ const getUserChannel = asyncHandler(async (req, res) => {
                 from: 'subscriptions',
                 localField: '_id',
                 foreignField: 'channel',
-                as: 'Subscriber',
+                as: 'subscribers',
             },
         },
         {
@@ -448,24 +449,25 @@ const getUserChannel = asyncHandler(async (req, res) => {
                 from: 'subscriptions',
                 localField: '_id',
                 foreignField: 'subscriber',
-                as: 'SubscribedTo',
+                as: 'subscribedTo',
             },
         },
         {
             $addFields: {
                 subscribersCount: {
-                    $size: '$subscribers',
+                    $size: { $ifNull: ['$subscribers', []] }, // Ensure it's an array
+
                 },
                 channelSubscribedToCount: {
-                    $size: '$SubscribedTo',
+                    $size: { $ifNull: ['$subscribedTo', []] }, // Ensure it's an array
                 },
                 isSubscribed: {
                     $cond: {
                         if: {
                             $in: [req.user?._id, '$subscribers.subscriber'],
-                            then: true,
-                            else: false,
                         },
+                        then: true,
+                        else: false,
                     },
                 },
             },
@@ -506,7 +508,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     const user = await User.aggregate([
         {
             $match: {
-                _id: mongoose.Types.ObjectId(req.user?._id),
+                _id: new mongoose.Types.ObjectId(req.user?._id),
             },
         },
         {
